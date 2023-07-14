@@ -1,0 +1,52 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+
+}
+
+group = 'com.workia'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation "org.springframework.boot:spring-boot-gradle-plugin:2.7.8"
+    implementation "org.springframework.boot:spring-boot-starter:2.7.8"
+    implementation 'io.getunleash:unleash-client-java:8.2.0'
+    implementation 'io.spring.gradle:dependency-management-plugin:0.5.6.RELEASE' // Add the Unleash dependency here
+
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+
+publishing {
+
+    publications {
+        maven(MavenPublication) {
+            groupId = 'com.workia'
+            artifactId = 'feature-toggle-sdk-id'
+            version = '1.0-SNAPSHOT'
+
+            from components.java
+        }
+    }
+
+
+//    repositories {
+//        mavenLocal()
+//        maven {
+//            url 'https://your-nexus-url/repository/maven-releases/'
+//            credentials {
+//                username = 'your-nexus-username'
+//                password = 'your-nexus-password'
+//            }
+//        }
+//    }
+}
