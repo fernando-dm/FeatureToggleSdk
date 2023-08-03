@@ -1,4 +1,4 @@
-package com.workia.application;
+package com.company.context;
 
 public interface FeatureContext {
     FeatureContextImpl createFeatureContext(String tenantId, String companyId);

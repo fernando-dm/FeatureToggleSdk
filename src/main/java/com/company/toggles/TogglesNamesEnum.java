@@ -1,4 +1,4 @@
-package com.workia.application;
+package com.company.toggles;
 
 public enum TogglesNamesEnum implements TogglesNames {
     TENANT_COMPANY_TOGGLE("tenantCompanyToggle"),

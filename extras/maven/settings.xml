@@ -1,0 +1,52 @@
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd">
+
+
+    <servers>
+        <server>
+            <id>nexus</id>
+            <username>admin</username>
+            <password>nexus_password</password>
+        </server>
+    </servers>
+
+  <profiles>
+    <profile>
+      <id>nexus</id>
+      <repositories>
+        <repository>
+          <id>maven-snapshots</id>
+          <name>company-feature-toggles-sdk</name>
+        <!--            check if maven-snapshots -->
+          <url>http://nexus.sde.company.solutions:8081/repository/maven-snapshots/</url>
+        </repository>
+      </repositories>
+    </profile>
+  </profiles>
+
+<mirrors>
+
+  <mirror>
+    <id>nexus</id>
+    <mirrorOf>external:http:*</mirrorOf>
+      <!--            check if maven-snapshots -->
+    <url>http://nexus.sde.company.solutions:8081/repository/maven-snapshots/</url>
+    <blocked>false</blocked>
+  </mirror>
+
+  <mirror>
+      <id>maven-default-http-blocker</id>
+      <mirrorOf>external:http:*</mirrorOf>
+      <name>Pseudo repository to mirror external repositories initially using HTTP.</name>
+      <url>http://0.0.0.0/</url>
+      <blocked>false</blocked>
+  </mirror>
+
+</mirrors>
+
+  <activeProfiles>
+      <activeProfile>nexus</activeProfile>
+  </activeProfiles>
+
+</settings>

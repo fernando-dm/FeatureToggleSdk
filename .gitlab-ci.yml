@@ -1,0 +1,81 @@
+stages:
+  - build
+  - unit-test
+  - sonar
+  - deploy-nexus
+  - clean
+
+variables:
+  DOCKER_IMAGE_GRADLE: "gradle:7.5.1-jdk8"
+
+build:
+  image: $DOCKER_IMAGE_GRADLE
+  stage: build
+  script:
+    - ./gradlew -g /cache/.gradle clean build
+  artifacts:
+    paths:
+      - build/
+  only:
+    - develop
+
+unit-test:
+  image: $DOCKER_IMAGE_GRADLE
+  stage: unit-test
+  script:
+    # mv command is optional, you can set all in the environment (cloud or bare)
+    - mv gradle-dev.properties gradle.properties
+    - ./gradlew -g /cache/.gradle clean test
+  artifacts:
+    paths:
+      - build/reports/jacoco/test/jacocoTestReport.xml
+  only:
+    - develop
+
+sonar:
+  image: $DOCKER_IMAGE_GRADLE
+  stage: sonar
+  script:
+    # mv command is optional, you can set all in the environment (cloud or bare)
+    - mv gradle-dev.properties gradle.properties
+    - ./gradlew -g /cache/.gradle sonarqube -Dsonar.qualitygate.wait=true -x test --stacktrace -i
+  only:
+    - develop
+
+
+deploy-nexus:
+  image: $DOCKER_IMAGE_GRADLE
+  stage: deploy-nexus
+  script:
+    # mv command is optional, you can set all in the environment (cloud or bare)
+    - mv gradle-dev.properties gradle.properties
+    - ./gradlew -g /cache/.gradle clean build
+
+    # Get artifact information from build.gradle
+    - export GROUP_ID=$(./gradlew -q printGroupId)
+    - export ARTIFACT_ID=$(./gradlew -q printArtifactId)
+    - export ARTIFACT_VERSION=$(./gradlew -q printArtifactVersion)
+
+    # Check if the artifact exists in Nexus
+    # note that NEXUS_URL, NEXUS_REPOSITORY, NEXUS_USER, NEXUS_PASSWORD are set in cloud
+    - export NEXUS_ARTIFACT_URL="${NEXUS_URL}/service/rest/v1/search/assets?repository=${NEXUS_REPOSITORY}&name=${ARTIFACT_ID}&version=${ARTIFACT_VERSION}"
+    - export NEXUS_ARTIFACT_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" -u "${NEXUS_USER}:${NEXUS_PASSWORD}" "${NEXUS_ARTIFACT_URL}")
+
+    # Handle the result based on whether the artifact exists or not
+    - if [ "$NEXUS_ARTIFACT_EXISTS" -eq "200" ]; then
+      echo "Artifact already exists in Nexus. Skipping deployment.";
+      else
+      ./gradlew -g /cache/.gradle clean publish -Pusername="${NEXUS_USER}" -Ppassword="${NEXUS_PASSWORD}" -Purl="${NEXUS_URL}" --info;
+      fi
+  only:
+    - master
+
+clean:
+  image: docker
+  stage: clean
+  script:
+    - docker system prune -a -f
+  allow_failure: true
+  only:
+    - develop
+    - master

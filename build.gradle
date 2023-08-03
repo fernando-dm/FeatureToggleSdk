@@ -1,14 +1,27 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
-
+    id "org.sonarqube" version "3.5.0.2730"
+    id('jacoco')
+    id "org.owasp.dependencycheck" version "8.1.0"
+}
+ext {
+    appVersion = '1.0-SNAPSHOT'
+    appGroup = 'com.company.feature-toggles'
+    appArtifactId = 'company-feature-toggles-sdk'
+    appDescription = 'Feature Toggle SDK for Java'
 }
 
-group = 'com.workia'
-version = '1.0-SNAPSHOT'
+group = appGroup
+version = appVersion
+
 
 repositories {
     mavenCentral()
+}
+
+jacoco {
+    toolVersion = "0.8.7"
 }
 
 dependencies {
@@ -17,36 +30,105 @@ dependencies {
     implementation 'io.getunleash:unleash-client-java:8.2.0'
     implementation 'io.spring.gradle:dependency-management-plugin:0.5.6.RELEASE' // Add the Unleash dependency here
 
+//Cucumber
+    def cucumberVersion = '7.11.2'
+    testImplementation 'io.cucumber:cucumber-core:' + cucumberVersion
+    implementation group: 'io.cucumber', name: 'cucumber-java8', version: cucumberVersion
+    implementation group: 'io.cucumber', name: 'cucumber-java', version: cucumberVersion
+    // https://mvnrepository.com/artifact/io.cucumber/gherkin
+    implementation group: 'io.cucumber', name: 'gherkin', version: '26.2.0'
+    // https://mvnrepository.com/artifact/io.cucumber/cucumber-junit
+    testImplementation group: 'io.cucumber', name: 'cucumber-junit', version: cucumberVersion
+    implementation group: 'io.cucumber', name: 'cucumber-picocontainer', version: cucumberVersion
+
+// TEST
     testImplementation platform('org.junit:junit-bom:5.9.1')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.mockito:mockito-core:3.12.4'
 }
 
-test {
-    useJUnitPlatform()
-}
+// NEXUS: optional configuration
 
+// if you use gradle.properties file
+def defaultNexusUser = project.findProperty("repoUser") ?: "default_user"
+def defaultNexusPassword = project.findProperty("repoPassword") ?: "default_password"
+def defaultNexusUrl = project.findProperty("repoUrl") ?: "default_url"
+
+// priorize conf of gitlab-ci instead of conf de gradle.properties
+def nexusUser = project.hasProperty('username') ? username : defaultNexusUser
+def nexusPassword = project.hasProperty('password') ? password : defaultNexusPassword
+def nexusUrl = project.hasProperty('url') ? url : defaultNexusUrl
 
 publishing {
-
     publications {
-        maven(MavenPublication) {
-            groupId = 'com.workia'
-            artifactId = 'feature-toggle-sdk-id'
-            version = '1.0-SNAPSHOT'
-
+        mavenJava(MavenPublication) {
             from components.java
+            groupId = appGroup
+            artifactId = appArtifactId
+            version = appVersion
+            description = appDescription
         }
     }
-
-
-//    repositories {
-//        mavenLocal()
-//        maven {
-//            url 'https://your-nexus-url/repository/maven-releases/'
-//            credentials {
-//                username = 'your-nexus-username'
-//                password = 'your-nexus-password'
-//            }
-//        }
-//    }
+    repositories {
+        maven {
+            name = 'nexus'
+            allowInsecureProtocol = true
+            url = nexusUrl //repoUrl
+            credentials {
+                username = nexusUser
+                password = nexusPassword
+            }
+            // Uncomment the following line to disable SSL verification (not recommended for production use)
+            // sslVerificationEnabled = false
+        }
+    }
 }
+
+/* */
+// task for gitlab CI-CD: optional configuration
+// tasks for gitlab-ci gradle.properties
+task printGroupId {doLast {println publishing.publications.mavenJava.groupId } }
+task printArtifactId {doLast {println publishing.publications.mavenJava.artifactId } }
+task printArtifactVersion {doLast {println publishing.publications.mavenJava.version } }
+
+test {
+    testLogging {
+        events "PASSED", "SKIPPED", "FAILED"
+    }
+    useJUnitPlatform()
+    maxHeapSize = '2G'
+    finalizedBy jacocoTestReport
+}
+
+
+// task for SONAR: optional configuration
+sonarqube {
+    properties {
+        property "sonar.coverage.jacoco.xmlReportPaths", "$buildDir/reports/jacoco/test/jacocoTestReport.xml"
+    }
+}
+
+jacocoTestReport {
+    reports {
+        xml.required = true
+        csv.required = false
+        html.required = true
+        html.destination(file("$buildDir/reports/coverage"))
+    }
+    classDirectories.setFrom(
+            sourceSets.main.output.asFileTree.matching {
+                //exclude("**/Application.*")
+            }
+    )
+}
+
+dependencyCheck {
+    autoUpdate = false
+    cveValidForHours = 1
+    format = 'HTML'
+}
+
+
+
+
+
